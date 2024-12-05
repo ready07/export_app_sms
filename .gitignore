@@ -23,7 +23,7 @@ migrate_working_dir/
 #.vscode/
 node_modules/
 .env
-firebase-adminsdk.json
+backend/firebase-adminsdk.json
 
 
 
