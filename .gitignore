@@ -22,7 +22,8 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 node_modules/
-.envfirebase-adminsdk.json
+.env
+firebase-adminsdk.json
 
 
 
