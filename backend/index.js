@@ -12,40 +12,46 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
 // Endpoint to send SMS
 app.post('/send-sms', async (req, res) => {
-  const { phone } = req.body;
+    const { phone } = req.body;
 
-  if (!phone) {
-    return res.status(400).json({ message: 'Phone number is required' });
-  }
-
-  try {
-    const response = await axios.post(
-      'https://notify.eskiz.uz/api/message/sms/send',
-      {
-        mobile_phone: phone,
-        message: 'This is test from Eskiz', // Replace with dynamic code if needed
-        from: '4546',
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-      }
-    );
-
-    // Check Eskiz response and return appropriate status
-    if (response.data.status === 'success') {
-      res.status(200).json({ message: 'SMS sent successfully', details: response.data });
-    } else {
-      res.status(400).json({ message: 'Failed to send SMS', details: response.data });
+    if (!phone) {
+        return res.status(400).json({ message: 'Phone number is required' });
     }
-  } catch (error) {
-    console.error('Error sending SMS:', error.response?.data || error.message);
-    res.status(500).json({
-      message: 'Error occurred while sending SMS',
-      error: error.response?.data || error.message,
-    });
-  }
+
+    try {
+        const response = await axios.post(
+            'https://notify.eskiz.uz/api/message/sms/send',
+            {
+                mobile_phone: phone,
+                message: 'Your verification code is 1234', // Replace with dynamic code if needed
+                from: '4546',
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`,
+                },
+            }
+        );
+
+        // Treat "waiting" as a successful response
+        if (response.data.status === 'success' || response.data.status === 'waiting') {
+            res.status(200).json({
+                message: 'SMS sent successfully',
+                details: response.data,
+            });
+        } else {
+            res.status(400).json({
+                message: 'Failed to send SMS',
+                details: response.data,
+            });
+        }
+    } catch (error) {
+        console.error('Error sending SMS:', error.response?.data || error.message);
+        res.status(500).json({
+            message: 'Error occurred while sending SMS',
+            error: error.response?.data || error.message,
+        });
+    }
 });
 
 // Endpoint to verify the code
