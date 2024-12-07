@@ -1,58 +1,87 @@
 import 'package:flutter/material.dart';
-import 'package:export_app_sms/screens/otp_verification.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'otp_verification.dart';
 
-class PhoneInputScreen extends StatefulWidget {
-  const PhoneInputScreen({super.key});
-
+class PhoneInputPage extends StatefulWidget {
   @override
-  // ignore: library_private_types_in_public_api
-  _PhoneInputScreenState createState() => _PhoneInputScreenState();
+  _PhoneInputPageState createState() => _PhoneInputPageState();
 }
 
-class _PhoneInputScreenState extends State<PhoneInputScreen> {
-  final _phoneController = TextEditingController();
+class _PhoneInputPageState extends State<PhoneInputPage> {
+  final TextEditingController _phoneController = TextEditingController();
 
-  
-  void _sendOTP() {
-    String phoneNumber = _phoneController.text.trim();
-
-    if (phoneNumber.isEmpty || phoneNumber.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter a valid phone number")),
+  Future<void> sendSms() async {
+    String phone = _phoneController.text.trim();
+    if (!phone.startsWith('+')) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Invalid Phone Number'),
+          content: Text('Please enter the phone number starting with a "+" sign (e.g., +998...).'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+        ),
       );
       return;
     }
 
-    // Navigate to OTP verification screen with the entered phone number
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OtpVerificationScreen(phoneNumber: phoneNumber),
-      ),
-    );
+    final String backendUrl = 'https://export-app-sms.onrender.com/send-sms';
+
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': phone}),
+      );
+
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => VerificationPage(phone: phone)),
+        );
+      } else {
+        // Decode the backend response and show the error details
+        final responseData = jsonDecode(response.body);
+        String errorMessage = responseData['message'] ?? 'Unknown error';
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text(errorMessage),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+          ),
+        );
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to connect to the server. Please try again later.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Phone Authentication")),
+      appBar: AppBar(title: Text('Enter Phone Number')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: _phoneController,
+              decoration: InputDecoration(labelText: 'ex: +998901234567'),
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: "Enter Phone Number",
-                border: OutlineInputBorder(),
-              ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _sendOTP,
-              child: const Text("Send OTP"),
+              onPressed: sendSms,
+              child: Text('Send SMS'),
             ),
           ],
         ),

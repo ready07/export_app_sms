@@ -1,64 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:export_app_sms/screens/home_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'home_page.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
-  final String phoneNumber;
-
-  const OtpVerificationScreen({super.key, required this.phoneNumber});
+class VerificationPage extends StatefulWidget {
+  final String phone;
+  VerificationPage({required this.phone});
 
   @override
-  // ignore: library_private_types_in_public_api
-  _OtpVerificationScreenState createState() => _OtpVerificationScreenState();
+  _VerificationPageState createState() => _VerificationPageState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final _otpController = TextEditingController();
+class _VerificationPageState extends State<VerificationPage> {
+  final TextEditingController _codeController = TextEditingController();
 
-  void _verifyOTP() {
-    String otp = _otpController.text.trim();
+  Future<void> verifySms() async {
+    final String backendUrl = 'https://export-app-sms.onrender.com/verify-sms';
 
-    if (otp.isEmpty || otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter a valid OTP")),
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': widget.phone, 'code': _codeController.text}),
       );
-      return;
-    }
 
-    // Here you would verify OTP using your backend.
-    // For now, navigate to the home screen directly.
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      } else {
+        // Decode the backend response and show the error details
+        final responseData = jsonDecode(response.body);
+        String errorMessage = responseData['message'] ?? 'Unknown error';
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text(errorMessage),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+          ),
+        );
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to connect to the server. Please try again later.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Verify OTP")),
+      appBar: AppBar(title: Text('Verify Code')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              "Enter the OTP sent to ${widget.phoneNumber}",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 20),
             TextField(
-              controller: _otpController,
+              controller: _codeController,
+              decoration: InputDecoration(labelText: 'Verification Code'),
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Enter OTP",
-                border: OutlineInputBorder(),
-              ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _verifyOTP,
-              child: const Text("Verify"),
+              onPressed: verifySms,
+              child: Text('Verify Code'),
             ),
           ],
         ),
