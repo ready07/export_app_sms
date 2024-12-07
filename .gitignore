@@ -24,7 +24,7 @@ migrate_working_dir/
 backend/node_modules/
 backend/.env
 backend/firebase-adminsdk.json
-firebase-adminsdk.json
+
 
 
 
