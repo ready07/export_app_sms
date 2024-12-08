@@ -23,7 +23,7 @@ app.post('/send-sms', async (req, res) => {
             'https://notify.eskiz.uz/api/message/sms/send',
             {
                 mobile_phone: phone,
-                message: 'Your verification code is 1234', // Replace with dynamic code if needed
+                message: 'This is test from Eskiz', // Replace with dynamic code if needed
                 from: '4546',
             },
             {
