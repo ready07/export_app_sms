@@ -28,7 +28,7 @@ const RATE_LIMIT_WINDOW = 300000; // 5 minutes
 
 app.use((req, res, next) => {
   const { phone } = req.body;
-  if (req.path === '/send-sms' && phone) {
+  if (req.path === 'https://export-app-sms.onrender.com/send-sms' && phone) {
     const currentTime = Date.now();
     if (rateLimit[phone] && currentTime - rateLimit[phone] < RATE_LIMIT_WINDOW) {
       return res.status(429).json({ message: 'Too many requests. Please try again later.' });
@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 });
 
 // Endpoint to send SMS
-app.post('/send-sms', async (req, res) => {
+app.post('https://export-app-sms.onrender.com/send-sms', async (req, res) => {
   const { phone } = req.body;
 
   if (!phone) {
@@ -96,7 +96,7 @@ app.post('/send-sms', async (req, res) => {
 });
 
 // Endpoint to verify the OTP
-app.post('/verify-code', async (req, res) => {
+app.post('https://export-app-sms.onrender.com/verify-code', async (req, res) => {
   const { phone, code } = req.body;
 
   if (!phone || !code) {
