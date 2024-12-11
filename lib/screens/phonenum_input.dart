@@ -22,7 +22,7 @@ class _PhoneInputPageState extends State<PhoneInputPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://<YOUR_BACKEND_URL>/send-sms'),
+        Uri.parse('https://export-app-sms.onrender.com/send-sms'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'phone': phone}),
       );

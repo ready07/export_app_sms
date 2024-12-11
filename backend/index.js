@@ -22,6 +22,22 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 // Helper to generate a random OTP
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+// Middleware for rate limiting (simple in-memory example)
+const rateLimit = {};
+const RATE_LIMIT_WINDOW = 300000; // 5 minutes
+
+app.use((req, res, next) => {
+  const { phone } = req.body;
+  if (req.path === '/send-sms' && phone) {
+    const currentTime = Date.now();
+    if (rateLimit[phone] && currentTime - rateLimit[phone] < RATE_LIMIT_WINDOW) {
+      return res.status(429).json({ message: 'Too many requests. Please try again later.' });
+    }
+    rateLimit[phone] = currentTime;
+  }
+  next();
+});
+
 // Endpoint to send SMS
 app.post('/send-sms', async (req, res) => {
   const { phone } = req.body;
@@ -30,11 +46,13 @@ app.post('/send-sms', async (req, res) => {
     return res.status(400).json({ message: 'Phone number is required' });
   }
 
+  // Sanitize and validate phone number
+  const sanitizedPhone = phone.replace(/[^+\d]/g, '');
   const otp = generateOtp();
 
   try {
     // Save OTP to Firestore
-    const otpDocRef = db.collection('otps').doc(phone);
+    const otpDocRef = db.collection('otps').doc(sanitizedPhone);
     await otpDocRef.set({
       otp,
       createdAt: new Date().toISOString(),
@@ -45,7 +63,7 @@ app.post('/send-sms', async (req, res) => {
       const response = await axios.post(
         'https://notify.eskiz.uz/api/message/sms/send',
         {
-          mobile_phone: phone,
+          mobile_phone: sanitizedPhone,
           message: `Your verification code is ${otp}`,
           from: '4546',
         },
@@ -85,8 +103,11 @@ app.post('/verify-code', async (req, res) => {
     return res.status(400).json({ message: 'Phone number and code are required' });
   }
 
+  // Sanitize phone number
+  const sanitizedPhone = phone.replace(/[^+\d]/g, '');
+
   try {
-    const otpDocRef = db.collection('otps').doc(phone);
+    const otpDocRef = db.collection('otps').doc(sanitizedPhone);
     const otpDoc = await otpDocRef.get();
 
     if (!otpDoc.exists) {
@@ -96,13 +117,13 @@ app.post('/verify-code', async (req, res) => {
     const { otp } = otpDoc.data();
     if (code === otp) {
       // Check if the user already exists
-      const userDocRef = db.collection('users').doc(phone);
+      const userDocRef = db.collection('users').doc(sanitizedPhone);
       const userDoc = await userDocRef.get();
 
       if (!userDoc.exists) {
         // Create new user if not exists
         await userDocRef.set({
-          phone,
+          phone: sanitizedPhone,
           createdAt: new Date().toISOString(),
           name: '',
         });

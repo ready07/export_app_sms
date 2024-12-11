@@ -26,7 +26,7 @@ class _VerificationPageState extends State<VerificationPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://<YOUR_BACKEND_URL>/verify-code'),
+        Uri.parse('https://export-app-sms.onrender.com/verify-code'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'phone': widget.phone, 'code': otp}),
       );
