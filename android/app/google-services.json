@@ -1,13 +1,32 @@
-{
+ {
   "project_info": {
-    "project_number": "379586495072",
-    "project_id": "export-app-eskizuz",
-    "storage_bucket": "export-app-eskizuz.firebasestorage.app"
+    "project_number": "58637032565",
+    "project_id": "export-auth-app",
+    "storage_bucket": "export-auth-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:379586495072:android:5d314ed997b60807a0f905",
+        "mobilesdk_app_id": "1:58637032565:android:85d40a77d8526cba50ac3c",
+        "android_client_info": {
+          "package_name": "com.example.auth_third"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRsPUxpkh9JRwnUZvqpi9Q6CEGvJYJF6M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:58637032565:android:21234537459bf80050ac3c",
         "android_client_info": {
           "package_name": "com.example.export_app_sms"
         }
@@ -15,7 +34,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA9KPeDZpJFfxwIIhV_qG6CPoWNS6n9hlk"
+          "current_key": "AIzaSyBRsPUxpkh9JRwnUZvqpi9Q6CEGvJYJF6M"
         }
       ],
       "services": {

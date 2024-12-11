@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SMS Verification App',
+      title: 'Phone Auth Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: PhoneInputPage(),
     );

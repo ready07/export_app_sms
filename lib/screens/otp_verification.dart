@@ -5,6 +5,7 @@ import 'home_page.dart';
 
 class VerificationPage extends StatefulWidget {
   final String phone;
+
   VerificationPage({required this.phone});
 
   @override
@@ -12,67 +13,66 @@ class VerificationPage extends StatefulWidget {
 }
 
 class _VerificationPageState extends State<VerificationPage> {
-  final TextEditingController _codeController = TextEditingController();
+  final _otpController = TextEditingController();
+  bool _isLoading = false;
 
-  Future<void> verifySms() async {
-    final String backendUrl = 'https://export-app-sms.onrender.com/verify-sms';
+  Future<void> verifyOtp() async {
+    final otp = _otpController.text.trim();
+    if (otp.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final response = await http.post(
-        Uri.parse(backendUrl),
+        Uri.parse('http://<YOUR_BACKEND_URL>/verify-code'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'phone': widget.phone, 'code': _codeController.text}),
+        body: jsonEncode({'phone': widget.phone, 'code': otp}),
       );
 
+      final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => HomePage(phone: widget.phone)),
         );
       } else {
-        // Decode the backend response and show the error details
-        final responseData = jsonDecode(response.body);
-        String errorMessage = responseData['message'] ?? 'Unknown error';
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Error'),
-            content: Text(errorMessage),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
-          ),
-        );
+        showError(data['message'] ?? 'Invalid OTP.');
       }
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Error'),
-          content: Text('Failed to connect to the server. Please try again later.'),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
-        ),
-      );
+      showError('An error occurred: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
+
+  void showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Verify Code')),
+      appBar: AppBar(title: Text('Enter OTP')),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
-              controller: _codeController,
-              decoration: InputDecoration(labelText: 'Verification Code'),
+              controller: _otpController,
               keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: 'OTP'),
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: verifySms,
-              child: Text('Verify Code'),
-            ),
+            _isLoading
+                ? CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: verifyOtp,
+                    child: Text('Verify OTP'),
+                  ),
           ],
         ),
       ),
