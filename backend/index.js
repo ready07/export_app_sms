@@ -27,6 +27,7 @@ const rateLimit = {};
 const RATE_LIMIT_WINDOW = 300000; // 5 minutes
 
 app.use((req, res, next) => {
+  console.log(`Request received: ${req.method} ${req.path} - Body:`, req.body);
   const { phone } = req.body;
   if (req.path === 'https://export-app-sms.onrender.com/send-sms' && phone) {
     const currentTime = Date.now();
