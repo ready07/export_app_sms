@@ -1,5 +1,8 @@
+import 'package:export_app_sms/screens/phonenum_input.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class HomePage extends StatelessWidget {
   final String phone;
@@ -7,6 +10,17 @@ class HomePage extends StatelessWidget {
   HomePage({required this.phone});
 
   final _nameController = TextEditingController();
+
+  //LOG OUT 
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('verifiedPhone');
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => PhoneInputPage()),
+      (route) => false,
+    );
+  }
 
   Future<void> updateName(String phone, String name) async {
     final userRef = FirebaseFirestore.instance.collection('users').doc(phone);
@@ -32,6 +46,7 @@ class HomePage extends StatelessWidget {
               },
               child: Text('Update Name'),
             ),
+            ElevatedButton(onPressed: () => logout(context), child: const Text('log out'))
           ],
         ),
       ),

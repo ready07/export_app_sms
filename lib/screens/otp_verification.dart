@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VerificationPage extends StatefulWidget {
   final String phone;
@@ -15,6 +16,11 @@ class VerificationPage extends StatefulWidget {
 class _VerificationPageState extends State<VerificationPage> {
   final _otpController = TextEditingController();
   bool _isLoading = false;
+
+  Future<void> savePhoneNumberLocally(String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('verifiedPhone', phone);
+  }
 
   Future<void> verifyOtp() async {
     final otp = _otpController.text.trim();
@@ -33,9 +39,11 @@ class _VerificationPageState extends State<VerificationPage> {
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
+        savePhoneNumberLocally(widget.phone);
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage(phone: widget.phone)),
+          MaterialPageRoute(
+              builder: (context) => HomePage(phone: widget.phone)),
         );
       } else {
         showError(data['message'] ?? 'Invalid OTP.');
@@ -50,7 +58,8 @@ class _VerificationPageState extends State<VerificationPage> {
   }
 
   void showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

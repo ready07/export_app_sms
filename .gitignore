@@ -26,7 +26,7 @@ backend/.env
 backend/firebase-adminsdk.json
 android/app/google-services.json
 
-
+firebase-adminsdk.json
 
 # Flutter/Dart/Pub related
 **/doc/api/
