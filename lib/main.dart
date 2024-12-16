@@ -1,8 +1,9 @@
-import 'package:export_app_sms/screens/home_page.dart';
+import 'package:export_app_sms/screens/main_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:export_app_sms/screens/phonenum_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:export_app_sms/screens/transfers_page.dart';
 
 Future<String?> getVerifiedPhoneNumber() async {
   final prefs = await SharedPreferences.getInstance();
@@ -27,9 +28,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Phone Auth Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
+      routes: {
+        "transfers" : (context) => const TransfersPage(),
+      },
       home: verifiedPhone != null
-          ? HomePage(phone: verifiedPhone!)
-          : PhoneInputPage(),
+          ? MainPage(phone: verifiedPhone!)
+          : RegistrationPage(),
     );
   }
 }
