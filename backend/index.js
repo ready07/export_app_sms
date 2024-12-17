@@ -3,8 +3,8 @@ const express = require('express');
 const axios = require('axios');
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
-const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
 
 // Initialize Firebase Admin
 initializeApp({
@@ -23,7 +23,7 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 // Helper to generate a random OTP
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Middleware for rate limiting (simple in-memory example)
+// Middleware for rate limiting
 const rateLimit = {};
 const RATE_LIMIT_WINDOW = 300000; // 5 minutes
 
@@ -41,27 +41,39 @@ app.use((req, res, next) => {
 
 // Endpoint to send SMS
 app.post('/send-sms', async (req, res) => {
-  const { phone } = req.body;
+  const { phone, countryCode } = req.body;
 
-  if (!phone) {
-    return res.status(400).json({ message: 'Phone number is required' });
+  if (!phone || !countryCode) {
+    return res.status(400).json({ message: 'Phone number and country code are required' });
   }
 
-  const sanitizedPhone = phone.replace(/[^+\d]/g, '');
-  const otp = generateOtp();
+  const sanitizedPhone = phone.replace(/\D/g, '');
+  const fullPhone = `${countryCode}${sanitizedPhone}`;
 
   try {
-    const otpDocRef = db.collection('otps').doc(sanitizedPhone);
+    // Check if the phone number already exists in the users collection
+    const userSnapshot = await db.collection('users').where('phone', '==', fullPhone).get();
+    if (!userSnapshot.empty) {
+      return res.status(400).json({
+        message: 'This phone number is already registered. Please log in or use a different number.',
+      });
+    }
+
+    const otp = generateOtp();
+
+    // Save OTP to Firestore
+    const otpDocRef = db.collection('otps').doc(fullPhone);
     await otpDocRef.set({
       otp,
       createdAt: new Date().toISOString(),
     });
 
     try {
+      // Send OTP using Eskiz
       const response = await axios.post(
         'https://notify.eskiz.uz/api/message/sms/send',
         {
-          mobile_phone: sanitizedPhone,
+          mobile_phone: sanitizedPhone, // Without the `+`
           message: `Your verification code is ${otp}`,
           from: '4546',
         },
@@ -73,37 +85,36 @@ app.post('/send-sms', async (req, res) => {
       );
 
       if (response.data.status === 'success' || response.data.status === 'waiting') {
-        return res.status(200).json({
-          message: 'SMS sent successfully',
-        });
+        return res.status(200).json({ message: 'SMS sent successfully' });
       } else {
         console.error('Eskiz API Error:', response.data);
+        return res.status(500).json({ message: 'Error sending SMS via Eskiz' });
       }
     } catch (smsError) {
       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
+      return res.status(500).json({ message: 'Error sending SMS', error: smsError.message });
     }
-
-    res.status(200).json({
-      message: 'OTP saved successfully. SMS delivery may have failed.',
-    });
   } catch (error) {
-    console.error('Error saving OTP:', error.message);
-    res.status(500).json({ message: 'Error saving OTP to Firestore', error: error.message });
+    console.error('Error:', error.message);
+    res.status(500).json({ message: 'Error saving OTP or checking user status', error: error.message });
   }
 });
 
 // Endpoint to verify the OTP and save user data
 app.post('/verify-code', async (req, res) => {
-  const { phone, code, name, password } = req.body;
+  const { phone, code, name, password, countryCode } = req.body;
 
-  if (!phone || !code || !name || !password) {
-    return res.status(400).json({ message: 'Phone, code, name, and password are required' });
+  if (!phone || !code || !name || !password || !countryCode) {
+    return res.status(400).json({
+      message: 'Phone, code, name, password, and country code are required',
+    });
   }
 
-  const sanitizedPhone = phone.replace(/[^+\d]/g, '');
+  const sanitizedPhone = phone.replace(/\D/g, '');
+  const fullPhone = `${countryCode}${sanitizedPhone}`;
 
   try {
-    const otpDocRef = db.collection('otps').doc(sanitizedPhone);
+    const otpDocRef = db.collection('otps').doc(fullPhone);
     const otpDoc = await otpDocRef.get();
 
     if (!otpDoc.exists) {
@@ -116,7 +127,7 @@ app.post('/verify-code', async (req, res) => {
       const userId = uuidv4();
 
       await db.collection('users').doc(userId).set({
-        phone: sanitizedPhone,
+        phone: fullPhone,
         name,
         password: hashedPassword,
         createdAt: new Date().toISOString(),
@@ -146,13 +157,13 @@ app.listen(PORT, () => {
 
 
 
-
 // require('dotenv').config();
 // const express = require('express');
 // const axios = require('axios');
 // const { initializeApp, applicationDefault } = require('firebase-admin/app');
 // const { getFirestore } = require('firebase-admin/firestore');
 // const { v4: uuidv4 } = require('uuid');
+// const bcrypt = require('bcrypt');
 
 // // Initialize Firebase Admin
 // initializeApp({
@@ -195,12 +206,10 @@ app.listen(PORT, () => {
 //     return res.status(400).json({ message: 'Phone number is required' });
 //   }
 
-//   // Sanitize and validate phone number
 //   const sanitizedPhone = phone.replace(/[^+\d]/g, '');
 //   const otp = generateOtp();
 
 //   try {
-//     // Save OTP to Firestore
 //     const otpDocRef = db.collection('otps').doc(sanitizedPhone);
 //     await otpDocRef.set({
 //       otp,
@@ -208,7 +217,6 @@ app.listen(PORT, () => {
 //     });
 
 //     try {
-//       // Attempt to send OTP via Eskiz
 //       const response = await axios.post(
 //         'https://notify.eskiz.uz/api/message/sms/send',
 //         {
@@ -234,9 +242,8 @@ app.listen(PORT, () => {
 //       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
 //     }
 
-//     // Redirect to verification even if SMS fails
 //     res.status(200).json({
-//       message: 'OTP saved successfully, proceed to verification.',
+//       message: 'OTP saved successfully. SMS delivery may have failed.',
 //     });
 //   } catch (error) {
 //     console.error('Error saving OTP:', error.message);
@@ -244,15 +251,14 @@ app.listen(PORT, () => {
 //   }
 // });
 
-// // Endpoint to verify the OTP
+// // Endpoint to verify the OTP and save user data
 // app.post('/verify-code', async (req, res) => {
-//   const { phone, code } = req.body;
+//   const { phone, code, name, password } = req.body;
 
-//   if (!phone || !code) {
-//     return res.status(400).json({ message: 'Phone number and code are required' });
+//   if (!phone || !code || !name || !password) {
+//     return res.status(400).json({ message: 'Phone, code, name, and password are required' });
 //   }
 
-//   // Sanitize phone number
 //   const sanitizedPhone = phone.replace(/[^+\d]/g, '');
 
 //   try {
@@ -265,22 +271,22 @@ app.listen(PORT, () => {
 
 //     const { otp } = otpDoc.data();
 //     if (code === otp) {
-//       // Check if the user already exists
-//       const userDocRef = db.collection('users').doc(sanitizedPhone);
-//       const userDoc = await userDocRef.get();
+//       const hashedPassword = await bcrypt.hash(password, 10);
+//       const userId = uuidv4();
 
-//       if (!userDoc.exists) {
-//         // Create new user if not exists
-//         await userDocRef.set({
-//           phone: sanitizedPhone,
-//           createdAt: new Date().toISOString(),
-//           name: '',
-//         });
-//       }
+//       await db.collection('users').doc(userId).set({
+//         phone: sanitizedPhone,
+//         name,
+//         password: hashedPassword,
+//         createdAt: new Date().toISOString(),
+//       });
 
-//       res.status(200).json({ message: 'Verification successful', loggedIn: true });
+//       return res.status(200).json({
+//         message: 'User registered successfully',
+//         userId,
+//       });
 //     } else {
-//       res.status(400).json({ message: 'Invalid verification code' });
+//       return res.status(400).json({ message: 'Invalid verification code' });
 //     }
 //   } catch (error) {
 //     console.error('Error verifying code:', error.message);
@@ -296,6 +302,5 @@ app.listen(PORT, () => {
 // app.listen(PORT, () => {
 //   console.log(`Server is running on port ${PORT}`);
 // });
-
 
 

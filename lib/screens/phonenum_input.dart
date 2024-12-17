@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert'; // for hashing
-import 'package:http/http.dart' as http; // for API calls
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class RegistrationPage extends StatefulWidget {
+  const RegistrationPage({super.key});
+
   @override
   _RegistrationPageState createState() => _RegistrationPageState();
 }
@@ -21,59 +21,77 @@ class _RegistrationPageState extends State<RegistrationPage> {
   void _sendOtp() async {
     if (_formKey.currentState!.validate()) {
       final phone = _phoneController.text;
-      final name = _nameController.text;
-      final password = _passwordController.text;
-
       try {
         final response = await http.post(
-          Uri.parse('https://your-backend.com/send_otp'),
-          body: {'phone': phone},
+          Uri.parse('https://export-app-sms.onrender.com/send-sms'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'phone': phone}),
         );
 
         if (response.statusCode == 200) {
           final result = json.decode(response.body);
-          if (result['success']) {
-            _showOtpDialog(phone, name, password);
+
+          if (result['message'] == 'User already exists') {
+            _showError(
+              'A user with this phone number already exists. Please try to log in or register with a different phone number.',
+            );
+          } else if (result['message'] == 'OTP saved successfully') {
+            _showOtpDialog(phone);
           } else {
-            _showError(result['message'] ?? 'Unknown error');
+            _showError(result['message'] ?? 'Unknown error occurred.');
           }
         } else {
-          _showError('Failed to send OTP: ${response.statusCode}');
+          _showError('Error: ${response.statusCode} - Unable to send OTP.');
         }
       } catch (e) {
-        _showError('Error: $e');
+        _showError('Failed to send OTP: $e');
       }
     }
   }
 
-  void _showOtpDialog(String phone, String name, String password) {
+  void _showOtpDialog(String phone) {
     showDialog(
       context: context,
       builder: (context) {
-        final TextEditingController _otpController = TextEditingController();
+        final TextEditingController otpController = TextEditingController();
 
         return AlertDialog(
-          title: Text('Enter OTP'),
+          title: const Text('Enter OTP'),
           content: TextField(
-            controller: _otpController,
-            decoration: InputDecoration(labelText: 'OTP'),
+            controller: otpController,
+            decoration: const InputDecoration(labelText: 'OTP'),
             keyboardType: TextInputType.number,
           ),
           actions: [
             TextButton(
               onPressed: () async {
-                final otp = _otpController.text;
+                final otp = otpController.text;
+                final name = _nameController.text;
+                final password = _passwordController.text;
+
+                if (otp.isEmpty) {
+                  _showError('OTP cannot be empty');
+                  return;
+                }
+
                 try {
                   final response = await http.post(
-                    Uri.parse('https://your-backend.com/verify_otp'),
-                    body: {'phone': phone, 'otp': otp},
+                    Uri.parse('https://export-app-sms.onrender.com/verify-code'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: json.encode({
+                      'phone': phone,
+                      'code': otp,
+                      'name': name,
+                      'password': password,
+                    }),
                   );
 
                   if (response.statusCode == 200) {
                     final result = json.decode(response.body);
-                    if (result['success']) {
-                      await _saveUserToFirestore(phone, name, password);
-                      Navigator.of(context).pop();
+                    if (result['message'] == 'User registered successfully') {
+                      // ignore: use_build_context_synchronously
+                      Navigator.of(context).pop(); // Close the OTP dialog
+                      _showSuccess('User registered successfully!');
                     } else {
                       _showError(result['message'] ?? 'Invalid OTP');
                     }
@@ -81,10 +99,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     _showError('Failed to verify OTP: ${response.statusCode}');
                   }
                 } catch (e) {
-                  _showError('Error: $e');
+                  _showError('Verification error: $e');
                 }
               },
-              child: Text('Verify'),
+              child: const Text('Verify'),
             ),
           ],
         );
@@ -92,23 +110,21 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
-  Future<void> _saveUserToFirestore(String phone, String name, String password) async {
-    final hashedPassword = sha256.convert(utf8.encode(password)).toString();
-
-    await FirebaseFirestore.instance.collection('users').add({
-      'phone': phone,
-      'name': name,
-      'password': hashedPassword,
-    });
-
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('User registered successfully!')),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
-  void _showError(String message) {
+  void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -116,110 +132,105 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Registration'),
+        title: const Text('Register'),
       ),
       body: Center(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Create Your Account',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Create Your Account',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
                   ),
-                  SizedBox(height: 20),
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      labelText: 'Phone Number',
-                      prefixText: '+998 ',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Phone number is required';
-                      } else if (value.length < 9 || value.length > 12) {
-                        return 'Invalid phone number';
-                      }
-                      return null;
-                    },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Phone number is required';
+                    } else if (!RegExp(r'^\+998\d{9}$').hasMatch(value)) {
+                      return 'Invalid phone number format';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(),
                   ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Full Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Full name is required';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _isPasswordHidden,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordHidden ? Icons.visibility : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordHidden = !_isPasswordHidden;
-                          });
-                        },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Full name is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _isPasswordHidden,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordHidden ? Icons.visibility : Icons.visibility_off,
                       ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password is required';
-                      } else if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 24),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _sendOtp,
-                      child: Text(
-                        'Send OTP',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(double.infinity, 50),
-                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordHidden = !_isPasswordHidden;
+                        });
+                      },
                     ),
                   ),
-                ],
-              ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password is required';
+                    } else if (value.length < 6) {
+                      return 'Password must be at least 6 characters long';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _sendOtp,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text(
+                    'Send OTP',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -227,116 +238,3 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 }
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http;
-// import 'dart:convert';
-// import 'otp_verification.dart';
-// import 'package:passwordfield/passwordfield.dart';
-
-// class PhoneInputPage extends StatefulWidget {
-//   @override
-//   _PhoneInputPageState createState() => _PhoneInputPageState();
-// }
-
-// class _PhoneInputPageState extends State<PhoneInputPage> {
-//   final _phoneController = TextEditingController();
-//   final _nameController = TextEditingController();
-//   final _passwordController = TextEditingController();
-//   final _repeatPasswordCont = TextEditingController();
-//   bool _isLoading = false;
-
-//   Future<void> sendOtp() async {
-//     final phone = _phoneController.text.trim();
-//     if (phone.isEmpty) return;
-
-//     setState(() {
-//       _isLoading = true;
-//     });
-
-//     try {
-//       final response = await http.post(
-//         Uri.parse('https://export-app-sms.onrender.com/send-sms'),
-//         headers: {'Content-Type': 'application/json'},
-//         body: jsonEncode({'phone': phone}),
-//       );
-
-//       final data = jsonDecode(response.body);
-//       if (response.statusCode == 200) {
-//         Navigator.push(
-//           context,
-//           MaterialPageRoute(
-//               builder: (context) => VerificationPage(phone: phone)),
-//         );
-//       } else {
-//         showError(data['message'] ?? 'Failed to send OTP.');
-//       }
-//     } catch (e) {
-//       showError('An error occurred: $e');
-//     } finally {
-//       setState(() {
-//         _isLoading = false;
-//       });
-//     }
-//   }
-
-//   void showError(String message) {
-//     ScaffoldMessenger.of(context)
-//         .showSnackBar(SnackBar(content: Text(message)));
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text('Enter Phone Number')),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           children: [
-//             TextField(
-//               controller: _phoneController,
-//               keyboardType: TextInputType.phone,
-//               decoration: const InputDecoration(
-//                 labelText: 'Enter a Phone Number',
-//                 prefixText: '',
-//                 border: OutlineInputBorder(),
-//               ),
-//               onChanged: (value) {
-//                 if (!value.startsWith('+998')) {
-//                   setState(() {
-//                     _phoneController.text = '+998';
-//                     _phoneController.selection = TextSelection.fromPosition(
-//                       TextPosition(offset: _phoneController.text.length),
-//                     );
-//                   });
-//                 }
-//               },
-//             ),
-//             const SizedBox(height: 20),
-//             TextField(
-//               controller: _nameController,
-//               keyboardType: TextInputType.name,
-//               decoration: const InputDecoration(
-//                   labelText: 'Enter your name', border: OutlineInputBorder()),
-//             ),
-//             const SizedBox(height: 20),
-//             PasswordField(
-//               controller: _passwordController,
-//               color: Colors.grey,
-//               passwordConstraint:AutofillHints.password,
-//             ),
-//             const SizedBox(height: 20),
-//             _isLoading
-//                 ? const CircularProgressIndicator()
-//                 : ElevatedButton(
-//                     onPressed: sendOtp,
-//                     child: const Text('Send OTP'),
-//                   ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
