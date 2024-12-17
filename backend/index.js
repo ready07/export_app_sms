@@ -48,7 +48,7 @@ app.post('/send-sms', async (req, res) => {
   }
 
   const sanitizedPhone = phone.replace(/\D/g, '');
-  const fullPhone = `${countryCode}${sanitizedPhone}`;
+  const fullPhone = `${"+"}${sanitizedPhone}`;
 
   try {
     // Check if the phone number already exists in the users collection
@@ -73,8 +73,11 @@ app.post('/send-sms', async (req, res) => {
       const response = await axios.post(
         'https://notify.eskiz.uz/api/message/sms/send',
         {
+          email: ESKIZ_EMAIL,
+          password: ESKIZ_PASSWORD,
           mobile_phone: sanitizedPhone, // Without the `+`
           message: `Your verification code is ${otp}`,
+          countryCode: "+998",
           from: '4546',
         },
         {

@@ -10,10 +10,12 @@ class RegistrationPage extends StatefulWidget {
 }
 
 class _RegistrationPageState extends State<RegistrationPage> {
-  final TextEditingController _phoneController = TextEditingController(text: '+998');
+  final TextEditingController _phoneController =
+      TextEditingController(text: '+998');
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isPasswordHidden = true;
@@ -35,7 +37,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             _showError(
               'A user with this phone number already exists. Please try to log in or register with a different phone number.',
             );
-          } else if (result['message'] == 'OTP saved successfully') {
+          } else if (result['message'] == "OTP saved successfully. SMS delivery may have failed.") {
             _showOtpDialog(phone);
           } else {
             _showError(result['message'] ?? 'Unknown error occurred.');
@@ -45,6 +47,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
         }
       } catch (e) {
         _showError('Failed to send OTP: $e');
+        _showOtpDialog(phone);
       }
     }
   }
@@ -76,7 +79,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
                 try {
                   final response = await http.post(
-                    Uri.parse('https://export-app-sms.onrender.com/verify-code'),
+                    Uri.parse(
+                        'https://export-app-sms.onrender.com/verify-code'),
                     headers: {'Content-Type': 'application/json'},
                     body: json.encode({
                       'phone': phone,
@@ -186,7 +190,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordHidden ? Icons.visibility : Icons.visibility_off,
+                        _isPasswordHidden
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() {
