@@ -25,7 +25,7 @@ const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 // Middleware for rate limiting
 const rateLimit = {};
-const RATE_LIMIT_WINDOW = 300000; // 5 minutes
+const RATE_LIMIT_WINDOW = 30000; // 5 minutes
 
 app.use((req, res, next) => {
   const { phone } = req.body;
@@ -88,14 +88,14 @@ app.post('/send-sms', async (req, res) => {
       );
 
       if (response.data.status === 'success' || response.data.status === 'waiting') {
-        return res.status(200).json({ message: 'SMS sent successfully' });
+        return res.status(200).json({ message: 'SMS sent successfully ' });
       } else {
         console.error('Eskiz API Error:', response.data);
-        return res.status(500).json({ message: 'Error sending SMS via Eskiz' });
+        return res.status(200).json({ message: 'Error sending SMS via Eskiz but SMS has been saved' });
       }
     } catch (smsError) {
       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
-      return res.status(500).json({ message: 'Error sending SMS', error: smsError.message });
+      return res.status(200).json({ message: 'Error sending SMS or saving sms', error: smsError.message });
     }
   } catch (error) {
     console.error('Error:', error.message);

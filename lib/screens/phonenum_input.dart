@@ -27,7 +27,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
         final response = await http.post(
           Uri.parse('https://export-app-sms.onrender.com/send-sms'),
           headers: {'Content-Type': 'application/json'},
-          body: json.encode({'phone': phone}),
+          body: json.encode({'phone': phone,
+          'countryCode' : "+998"
+          }),
         );
 
         if (response.statusCode == 200) {
@@ -43,7 +45,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
             _showError(result['message'] ?? 'Unknown error occurred.');
           }
         } else {
-          _showError('Error: ${response.statusCode} - Unable to send OTP.');
+          final result = json.decode(response.body);
+          _showError('Error: ${response.statusCode}, $result[message],- Unable to send OTP.');
         }
       } catch (e) {
         _showError('Failed to send OTP: $e');
