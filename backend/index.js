@@ -88,14 +88,14 @@ app.post('/send-sms', async (req, res) => {
       );
 
       if (response.data.status === 'success' || response.data.status === 'waiting') {
-        return res.status(200).json({ message: 'SMS sent successfully ' });
+        return res.status(200).json({ message: 'SMS sent successfully' });
       } else {
         console.error('Eskiz API Error:', response.data);
         return res.status(200).json({ message: 'Error sending SMS via Eskiz but SMS has been saved' });
       }
     } catch (smsError) {
       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
-      return res.status(200).json({ message: 'Error sending SMS or saving sms', error: smsError.message });
+      return res.status(200).json({ message: 'Error sending SMS but has also been saved', error: smsError.message });
     }
   } catch (error) {
     console.error('Error:', error.message);
@@ -114,10 +114,10 @@ app.post('/verify-code', async (req, res) => {
   }
 
   const sanitizedPhone = phone.replace(/\D/g, '');
-  const fullPhone = `${countryCode}${sanitizedPhone}`;
+  const fullPhone = `${"+"}${sanitizedPhone}`;
 
   try {
-    const otpDocRef = db.collection('otps').doc(fullPhone);
+    const otpDocRef = db.collection('otps').doc(phone);
     const otpDoc = await otpDocRef.get();
 
     if (!otpDoc.exists) {
@@ -130,8 +130,8 @@ app.post('/verify-code', async (req, res) => {
       const userId = uuidv4();
 
       await db.collection('users').doc(userId).set({
-        phone: fullPhone,
-        name,
+        phone: phone,
+        name: name,
         password: hashedPassword,
         createdAt: new Date().toISOString(),
       });

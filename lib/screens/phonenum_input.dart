@@ -27,9 +27,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
         final response = await http.post(
           Uri.parse('https://export-app-sms.onrender.com/send-sms'),
           headers: {'Content-Type': 'application/json'},
-          body: json.encode({'phone': phone,
-          'countryCode' : "+998"
-          }),
+          body: json.encode({'phone': phone, 'countryCode': "+998"}),
         );
 
         if (response.statusCode == 200) {
@@ -39,14 +37,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
             _showError(
               'A user with this phone number already exists. Please try to log in or register with a different phone number.',
             );
-          } else if (result['message'] == "OTP saved successfully. SMS delivery may have failed.") {
+          } else if (result['message'] == 'SMS sent successfully') {
             _showOtpDialog(phone);
           } else {
             _showError(result['message'] ?? 'Unknown error occurred.');
+            _showOtpDialog(phone);
           }
         } else {
           final result = json.decode(response.body);
-          _showError('Error: ${response.statusCode}, $result[message],- Unable to send OTP.');
+          _showError(
+              'Error: ${response.statusCode}, $result[message],- Unable to send OTP.');
         }
       } catch (e) {
         _showError('Failed to send OTP: $e');
@@ -90,6 +90,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                       'code': otp,
                       'name': name,
                       'password': password,
+                      'countryCode' : "+998"
                     }),
                   );
 
