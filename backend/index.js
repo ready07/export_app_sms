@@ -48,11 +48,11 @@ app.post('/send-sms', async (req, res) => {
   }
 
   const sanitizedPhone = phone.replace(/\D/g, '');
-  const fullPhone = `${"+"}${sanitizedPhone}`;
+  const fullPhone = `${countryCode}${sanitizedPhone}`;
 
   try {
     // Check if the phone number already exists in the users collection
-    const userSnapshot = await db.collection('users').where('phone', '==', fullPhone).get();
+    const userSnapshot = await db.collection('users').where('phone', '==', phone).get();
     if (!userSnapshot.empty) {
       return res.status(400).json({
         message: 'This phone number is already registered. Please log in or use a different number.',
@@ -62,7 +62,7 @@ app.post('/send-sms', async (req, res) => {
     const otp = generateOtp();
 
     // Save OTP to Firestore
-    const otpDocRef = db.collection('otps').doc(fullPhone);
+    const otpDocRef = db.collection('otps').doc(phone);
     await otpDocRef.set({
       otp,
       createdAt: new Date().toISOString(),
