@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+// import 'package:export_app_sms/screens/main_page.dart';
+import 'package:export_app_sms/screens/otp_verification.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _RegistrationPageState createState() => _RegistrationPageState();
 }
 
@@ -59,61 +62,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     showDialog(
       context: context,
       builder: (context) {
-        final TextEditingController otpController = TextEditingController();
-
-        return AlertDialog(
-          title: const Text('Enter OTP'),
-          content: TextField(
-            controller: otpController,
-            decoration: const InputDecoration(labelText: 'OTP'),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                final otp = otpController.text;
-                final name = _nameController.text;
-                final password = _passwordController.text;
-
-                if (otp.isEmpty) {
-                  _showError('OTP cannot be empty');
-                  return;
-                }
-
-                try {
-                  final response = await http.post(
-                    Uri.parse(
-                        'https://export-app-sms.onrender.com/verify-code'),
-                    headers: {'Content-Type': 'application/json'},
-                    body: json.encode({
-                      'phone': phone,
-                      'code': otp,
-                      'name': name,
-                      'password': password,
-                      'countryCode' : "+998"
-                    }),
-                  );
-
-                  if (response.statusCode == 200) {
-                    final result = json.decode(response.body);
-                    if (result['message'] == 'User registered successfully') {
-                      // ignore: use_build_context_synchronously
-                      Navigator.of(context).pop(); // Close the OTP dialog
-                      _showSuccess('User registered successfully!');
-                    } else {
-                      _showError(result['message'] ?? 'Invalid OTP');
-                    }
-                  } else {
-                    _showError('Failed to verify OTP: ${response.statusCode}');
-                  }
-                } catch (e) {
-                  _showError('Verification error: $e');
-                }
-              },
-              child: const Text('Verify'),
-            ),
-          ],
-        );
+        return VerificationDialog(phone: phone,name: _nameController.text,password:_passwordController.text,);
       },
     );
   }

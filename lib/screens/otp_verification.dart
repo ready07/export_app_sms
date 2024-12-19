@@ -1,3 +1,127 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:export_app_sms/screens/main_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:export_app_sms/main.dart';
+
+class VerificationDialog extends StatefulWidget {
+  final String phone;
+  final String name;
+  final String password;
+  const VerificationDialog(
+      {super.key,
+      required this.phone,
+      required this.name,
+      required this.password});
+
+  @override
+  State<VerificationDialog> createState() => _VerificationDialogState();
+}
+
+class _VerificationDialogState extends State<VerificationDialog> {
+  final otpcontroller = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> savePhoneNumberLocally(String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('verifiedPhone', phone);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Enter OTP'),
+      content: TextField(
+        controller: otpcontroller,
+        decoration: const InputDecoration(labelText: 'OTP'),
+        keyboardType: TextInputType.number,
+      ),
+      actions: [
+        _isLoading
+            ? const CircularProgressIndicator()
+            : TextButton(
+                onPressed: () async {
+                  final otp = otpcontroller.text;
+                  final name = widget.name;
+                  final password = widget.password;
+
+                  setState(() {
+                    _isLoading = true;
+                  });
+
+                  if (otp.isEmpty) {
+                    _showError('OTP cannot be empty');
+                    return;
+                  }
+
+                  try {
+                    final response = await http.post(
+                      Uri.parse(
+                          'https://export-app-sms.onrender.com/verify-code'),
+                      headers: {'Content-Type': 'application/json'},
+                      body: json.encode({
+                        'phone': widget.phone,
+                        'code': otp,
+                        'name': name,
+                        'password': password,
+                        'countryCode': "+998"
+                      }),
+                    );
+
+                    if (response.statusCode == 200) {
+                      final result = json.decode(response.body);
+                      if (result['message'] == 'User registered successfully') {
+                        savePhoneNumberLocally(widget.phone);
+                        Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    MainPage(phone: widget.phone)),
+                            (route) => false);
+                        // Close the OTP dialog
+                        _showSuccess('User registered successfully!');
+                      } else {
+                        _showError(result['message'] ?? 'Invalid OTP');
+                      }
+                    } else {
+                      _showError(
+                          'Failed to verify OTP: ${response.statusCode}');
+                    }
+                  } catch (e) {
+                    _showError('Verification error: $e');
+                  } finally {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
+                },
+                child: const Text('Verify'),
+              ),
+      ],
+    );
+  }
+}
+
+
 // import 'package:flutter/material.dart';
 // import 'package:http/http.dart' as http;
 // import 'dart:convert';

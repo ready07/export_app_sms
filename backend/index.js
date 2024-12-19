@@ -152,6 +152,51 @@ app.post('/verify-code', async (req, res) => {
   }
 });
 
+// Login endpoint
+app.post('/login', async (req, res) => {
+  const { phone, password } = req.body;
+
+  if (!phone || !password) {
+    return res.status(400).json({ message: 'Phone number and password are required' });
+  }
+
+  // Sanitize phone number
+  const sanitizedPhone = phone.replace(/[^+\d]/g, '');
+
+  try {
+    // Get user data from Firestore
+    const userDocRef = db.collection('users').doc(sanitizedPhone);
+    const userDoc = await userDocRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { password: storedPassword } = userDoc.data();
+
+    if (await bcrypt.compare(password, storedPassword)) {
+      res.status(200).json({ message: 'Login successful', loggedIn: true });
+    } else {
+      res.status(400).json({ message: 'Incorrect password' });
+    }
+  } catch (error) {
+    console.error('Error during login:', error.message);
+    res.status(500).json({
+      message: 'Error occurred during login',
+      error: error.message,
+    });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+
+
+
+
+
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

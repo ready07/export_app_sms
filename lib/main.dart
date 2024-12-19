@@ -30,10 +30,11 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.blue),
       routes: {
         "transfers" : (context) => const TransfersPage(),
+        
       },
       home: verifiedPhone != null
           ? MainPage(phone: verifiedPhone!)
-          : RegistrationPage(),
+          : const RegistrationPage(),
     );
   }
 }
