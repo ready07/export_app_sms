@@ -22,10 +22,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isPasswordHidden = true;
+  bool _is2ndPasswordHidden = true;
+  bool isloading = false;
 
+// requests to BACKEND to send sms and save the users
   void _sendOtp() async {
     if (_formKey.currentState!.validate()) {
       final phone = _phoneController.text;
+      setState(() {
+        isloading = true;
+      });
       try {
         final response = await http.post(
           Uri.parse('https://export-app-sms.onrender.com/send-sms'),
@@ -54,19 +60,29 @@ class _RegistrationPageState extends State<RegistrationPage> {
       } catch (e) {
         _showError('Failed to send OTP: $e');
         _showOtpDialog(phone);
+      } finally {
+        setState(() {
+          isloading = false;
+        });
       }
     }
   }
 
+//DIALOG for entering the verification code
   void _showOtpDialog(String phone) {
     showDialog(
       context: context,
       builder: (context) {
-        return VerificationDialog(phone: phone,name: _nameController.text,password:_passwordController.text,);
+        return VerificationDialog(
+          phone: phone,
+          name: _nameController.text,
+          password: _passwordController.text,
+        );
       },
     );
   }
 
+// FUNCTION FOR UNSUCCESSFULL RESPONSES
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -76,6 +92,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
+// FUNCTION FOR SUCCESSFUL RESPONSES
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -97,7 +114,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text(
                   'Create Your Account',
@@ -166,10 +183,22 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _confirmPasswordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _is2ndPasswordHidden,
+                  decoration: InputDecoration(
                     labelText: 'Confirm Password',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _is2ndPasswordHidden
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _is2ndPasswordHidden = !_is2ndPasswordHidden;
+                        });
+                      },
+                    ),
                   ),
                   validator: (value) {
                     if (value != _passwordController.text) {
@@ -179,7 +208,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   },
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
+                isloading
+                 ? const CircularProgressIndicator()
+                 : ElevatedButton(
                   onPressed: _sendOtp,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),

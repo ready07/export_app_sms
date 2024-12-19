@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:export_app_sms/screens/main_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:export_app_sms/screens/phonenum_input.dart';
 // import 'package:export_app_sms/main.dart';
 
 class VerificationDialog extends StatefulWidget {
@@ -70,6 +71,9 @@ class _VerificationDialogState extends State<VerificationDialog> {
 
                   if (otp.isEmpty) {
                     _showError('OTP cannot be empty');
+                    setState(() {
+                      _isLoading = false;
+                    });
                     return;
                   }
 
@@ -104,7 +108,7 @@ class _VerificationDialogState extends State<VerificationDialog> {
                       }
                     } else {
                       _showError(
-                          'Failed to verify OTP: ${response.statusCode}');
+                          'Invalid verification code: ${response.statusCode},please enter a valid code');
                     }
                   } catch (e) {
                     _showError('Verification error: $e');

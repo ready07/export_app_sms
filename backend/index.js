@@ -95,7 +95,7 @@ app.post('/send-sms', async (req, res) => {
       }
     } catch (smsError) {
       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
-      return res.status(200).json({ message: 'Error sending SMS but has also been saved', error: smsError.message });
+      return res.status(200).json({ message: 'Error sending SMS but it been saved', error: smsError.message });
     }
   } catch (error) {
     console.error('Error:', error.message);
@@ -159,32 +159,25 @@ app.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Phone number and password are required' });
   }
 
-
   // Sanitize phone number
   const sanitizedPhone = phone.replace(/[^+\d]/g, '');
 
   try {
-
-    const userSnapshot = await db.collection('users').where('phone', '==', phone).get();
-    if (!userSnapshot.empty) {
-      return res.status(400).json({
-        message: 'This phone number is Exist :)',
-      });
-    }
     // Get user data from Firestore
-    const userDocRef = db.collection('users').doc(phone);
+    const userDocRef = db.collection('users').doc(sanitizedPhone);
     const userDoc = await userDocRef.get();
 
     if (!userDoc.exists) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'Phone number not registered' });
     }
 
     const { password: storedPassword } = userDoc.data();
 
+    // bcrypt.compare handles the secure password comparison
     if (await bcrypt.compare(password, storedPassword)) {
       res.status(200).json({ message: 'Login successful', loggedIn: true });
     } else {
-      res.status(400).json({ message: 'Incorrect password' });
+      res.status(400).json({ message: 'Phone number or password is incorrect' });
     }
   } catch (error) {
     console.error('Error during login:', error.message);
