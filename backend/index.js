@@ -159,12 +159,20 @@ app.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Phone number and password are required' });
   }
 
+
   // Sanitize phone number
   const sanitizedPhone = phone.replace(/[^+\d]/g, '');
 
   try {
+
+    const userSnapshot = await db.collection('users').where('phone', '==', phone).get();
+    if (!userSnapshot.empty) {
+      return res.status(400).json({
+        message: 'This phone number is Exist :)',
+      });
+    }
     // Get user data from Firestore
-    const userDocRef = db.collection('users').doc(sanitizedPhone);
+    const userDocRef = db.collection('users').doc(phone);
     const userDoc = await userDocRef.get();
 
     if (!userDoc.exists) {
