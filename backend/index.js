@@ -152,7 +152,6 @@ app.post('/verify-code', async (req, res) => {
   }
 });
 
-// Login endpoint
 app.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
@@ -187,14 +186,6 @@ app.post('/login', async (req, res) => {
     });
   }
 });
-
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
-
-
-
-
 
 
 // Start server
