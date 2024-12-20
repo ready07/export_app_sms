@@ -152,7 +152,6 @@ app.post('/verify-code', async (req, res) => {
   }
 });
 
-
 app.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
@@ -192,6 +191,145 @@ app.post('/login', async (req, res) => {
       message: 'Error occurred during login',
       error: error.message,
     });
+  }
+});
+
+// Create new data
+app.post('/api/data/create', async (req, res) => {
+  const { userId, title, description } = req.body;
+
+  if (!userId || !title || !description) {
+    return res.status(400).json({ message: 'UserId, title, and description are required' });
+  }
+
+  try {
+    // Get a reference to the user's data collection
+    const dataRef = db.collection('users').doc(userId).collection('data');
+    
+    // Create new data document
+    const newData = {
+      title,
+      description,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const docRef = await dataRef.add(newData);
+    
+    res.status(201).json({
+      message: 'Data created successfully',
+      id: docRef.id,
+      ...newData
+    });
+  } catch (error) {
+    console.error('Error creating data:', error);
+    res.status(500).json({ message: 'Error creating data', error: error.message });
+  }
+});
+
+// Get all data for a user
+app.get('/api/data/list/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const dataRef = db.collection('users').doc(userId).collection('data');
+    const snapshot = await dataRef.orderBy('createdAt', 'desc').get();
+
+    const data = [];
+    snapshot.forEach(doc => {
+      data.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ message: 'Error fetching data', error: error.message });
+  }
+});
+
+// Get specific data item
+app.get('/api/data/:userId/:id', async (req, res) => {
+  const { userId, id } = req.params;
+
+  try {
+    const docRef = db.collection('users').doc(userId).collection('data').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+
+    res.status(200).json({
+      id: doc.id,
+      ...doc.data()
+    });
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ message: 'Error fetching data', error: error.message });
+  }
+});
+
+// Update data
+app.put('/api/data/:userId/:id', async (req, res) => {
+  const { userId, id } = req.params;
+  const { title, description } = req.body;
+
+  if (!title && !description) {
+    return res.status(400).json({ message: 'Title or description is required' });
+  }
+
+  try {
+    const docRef = db.collection('users').doc(userId).collection('data').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+
+    const updateData = {
+      ...(title && { title }),
+      ...(description && { description }),
+      updatedAt: new Date().toISOString()
+    };
+
+    await docRef.update(updateData);
+
+
+    res.status(200).json({
+      message: 'Data updated successfully',
+      id,
+      ...updateData
+    });
+  } catch (error) {
+    console.error('Error updating data:', error);
+    res.status(500).json({ message: 'Error updating data', error: error.message });
+  }
+});
+
+// Delete data
+app.delete('/api/data/:userId/:id', async (req, res) => {
+  const { userId, id } = req.params;
+
+  try {
+    const docRef = db.collection('users').doc(userId).collection('data').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+
+    await docRef.delete();
+
+    res.status(200).json({
+      message: 'Data deleted successfully',
+      id
+    });
+  } catch (error) {
+    console.error('Error deleting data:', error);
+    res.status(500).json({ message: 'Error deleting data', error: error.message });
   }
 });
 
