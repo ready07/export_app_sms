@@ -43,13 +43,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
           final result = json.decode(response.body);
 
           if (result['message'] == 'User already exists') {
-            _showError(
+            _showSuccess(
               'A user with this phone number already exists. Please try to log in or register with a different phone number.',
             );
           } else if (result['message'] == 'SMS sent successfully') {
             _showOtpDialog(phone);
           } else {
-            _showError(result['message'] ?? 'Unknown error occurred.');
+            _showSuccess(result['message'] ?? 'Unknown error occurred.');
             _showOtpDialog(phone);
           }
         } else {

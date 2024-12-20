@@ -91,11 +91,11 @@ app.post('/send-sms', async (req, res) => {
         return res.status(200).json({ message: 'SMS sent successfully' });
       } else {
         console.error('Eskiz API Error:', response.data);
-        return res.status(200).json({ message: 'Error sending SMS via Eskiz but SMS has been saved' });
+        return res.status(200).json({ message: 'Error sending SMS via Eskiz but otp has been saved' });
       }
     } catch (smsError) {
       console.error('Error sending SMS via Eskiz:', smsError.response?.data || smsError.message);
-      return res.status(200).json({ message: 'Error sending SMS but it been saved', error: smsError.message });
+      return res.status(200).json({ message: 'Error sending SMS, but the otp is saved', error: smsError.message });
     }
   } catch (error) {
     console.error('Error:', error.message);
@@ -152,6 +152,7 @@ app.post('/verify-code', async (req, res) => {
   }
 });
 
+
 app.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
@@ -163,19 +164,25 @@ app.post('/login', async (req, res) => {
   const sanitizedPhone = phone.replace(/[^+\d]/g, '');
 
   try {
-    // Get user data from Firestore
-    const userDocRef = db.collection('users').doc(sanitizedPhone);
-    const userDoc = await userDocRef.get();
+    // Query users collection where phone field matches the sanitized phone
+    const usersRef = db.collection('users');
+    const querySnapshot = await usersRef.where('phone', '==', sanitizedPhone).get();
 
-    if (!userDoc.exists) {
+    if (querySnapshot.empty) {
       return res.status(404).json({ message: 'Phone number not registered' });
     }
 
-    const { password: storedPassword } = userDoc.data();
+    // Get the first (and should be only) matching document
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data();
 
     // bcrypt.compare handles the secure password comparison
-    if (await bcrypt.compare(password, storedPassword)) {
-      res.status(200).json({ message: 'Login successful', loggedIn: true });
+    if (await bcrypt.compare(password, userData.password)) {
+      res.status(200).json({ 
+        message: 'Login successful', 
+        loggedIn: true,
+        userId: userDoc.id  // Return the UUID
+      });
     } else {
       res.status(400).json({ message: 'Phone number or password is incorrect' });
     }
@@ -187,6 +194,7 @@ app.post('/login', async (req, res) => {
     });
   }
 });
+
 
 
 // Start server
