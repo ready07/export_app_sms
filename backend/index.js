@@ -152,6 +152,122 @@ app.post('/verify-code', async (req, res) => {
   }
 });
 
+
+// Endpoint to handle forgot-password (Send OTP)
+app.post('/forgot-password', async (req, res) => {
+  const { phone, countryCode } = req.body;
+
+  if (!phone || !countryCode) {
+    return res.status(400).json({ message: 'Phone number and country code are required' });
+  }
+
+  const sanitizedPhone = phone.replace(/\D/g, '');
+  const fullPhone = `${countryCode}${sanitizedPhone}`;
+
+  try {
+    // Check if the phone number exists in the users collection
+    const userSnapshot = await db.collection('users').where('phone', '==', phone).get();
+    if (userSnapshot.empty) {
+      return res.status(400).json({ message: 'This phone number is not registered' });
+    }
+
+    const otp = generateOtp();
+
+    // Save OTP to Firestore
+    const otpDocRef = db.collection('otps').doc(phone);
+    await otpDocRef.set({
+      otp,
+      createdAt: new Date().toISOString(),
+    });
+
+    try {
+      // Send OTP using Eskiz
+      const response = await axios.post(
+        'https://notify.eskiz.uz/api/message/sms/send',
+        {
+          email: ESKIZ_EMAIL,
+          password: ESKIZ_PASSWORD,
+          mobile_phone: sanitizedPhone, // Without the `+`
+          message: `Your verification code is ${otp}`,
+          countryCode: '+998',
+          from: '4546',
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+          },
+        }
+      );
+
+      if (response.data.status === 'success' || response.data.status === 'waiting') {
+        return res.status(200).json({ message: 'OTP sent successfully' });
+      } else {
+        console.error('Eskiz API Error:', response.data);
+        return res.status(200).json({ message: 'Error sending OTP, but it has been saved' });
+      }
+    } catch (smsError) {
+      console.error('Error sending OTP via Eskiz:', smsError.response?.data || smsError.message);
+      return res.status(200).json({ message: 'Error sending OTP, but it has been saved', error: smsError.message });
+    }
+  } catch (error) {
+    console.error('Error during forgot-password:', error.message);
+    res.status(500).json({ message: 'Error occurred during forgot-password', error: error.message });
+  }
+});
+
+// Endpoint to update password
+app.post('/update-password', async (req, res) => {
+  const { phone, code, newPassword, confirmPassword } = req.body;
+
+  if (!phone || !code || !newPassword || !confirmPassword) {
+    return res.status(400).json({ message: 'Phone, code, and passwords are required' });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'Passwords do not match' });
+  }
+
+  const sanitizedPhone = phone.replace(/\D/g, '');
+
+  try {
+    // Verify OTP
+    const otpDocRef = db.collection('otps').doc(phone);
+    const otpDoc = await otpDocRef.get();
+
+    if (!otpDoc.exists) {
+      return res.status(400).json({ message: 'OTP not found' });
+    }
+
+    const { otp } = otpDoc.data();
+    if (code !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // Update password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const userSnapshot = await db.collection('users').where('phone', '==', phone).get();
+    const userDoc = userSnapshot.docs[0];
+
+    if (!userDoc) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    await db.collection('users').doc(userDoc.id).update({
+      password: hashedPassword,
+    });
+
+    // Delete OTP after successful password update
+    await otpDocRef.delete();
+
+    return res.status(200).json({ message: 'Password updated successfully. Please log in.' });
+  } catch (error) {
+    console.error('Error updating password:', error.message);
+    res.status(500).json({ message: 'Error occurred during password update', error: error.message });
+  }
+});
+
+
 app.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
